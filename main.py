@@ -1,4 +1,3 @@
-import asyncio
 import os
 from datetime import datetime
 from dotenv import load_dotenv
@@ -81,13 +80,11 @@ async def run_analysis(update=None):
         print(full_message)
 
 
-async def main():
+def main():
     print("Starting SMC Signal Engine Bot...")
     app = create_bot_application()
-    
-    # Start the bot (this keeps it running)
-    await app.run_polling()
+    app.run_polling()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
