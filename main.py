@@ -7,9 +7,9 @@ from data.data_fetcher import get_nifty_data, get_banknifty_data
 from signals.signal_generator import generate_signal
 from analysis.options_helper import suggest_option
 from analysis.kill_zone import apply_kill_zone_filter
-from risk.position_sizing import calculate_position_size, calculate_rr_and_pnl
-from telegram_bot.bot import create_bot_application, send_signal_to_telegram
-from utils.paper_logger import log_trade
+from position_sizing import calculate_position_size, calculate_rr_and_pnl
+from bot import create_bot_application, send_signal_to_telegram
+from paper_logger import log_trade
 
 load_dotenv()
 
