@@ -11,7 +11,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 IST = pytz.timezone("Asia/Kolkata")
 
-# Simple list of major holidays (you can add more later)
+# Major Indian market holidays (you can add more later)
 MARKET_HOLIDAYS = [
     "2026-01-26",  # Republic Day
     "2026-03-03",  # Holi
@@ -32,7 +32,7 @@ def is_market_open() -> bool:
     now = datetime.now(IST)
     
     # Weekend check
-    if now.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+    if now.weekday() >= 5:  # Saturday or Sunday
         return False
     
     # Holiday check
@@ -62,7 +62,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"Bot is running ✅\n"
         f"Market Status: {market_status}\n"
-        f"Auto-scan: Every 20 minutes (only during market hours)"
+        f"Auto-scan: Every 15 minutes (only during market hours)"
     )
 
 async def scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -139,8 +139,8 @@ def create_bot_application():
     app.add_handler(CommandHandler("scan", scan))
     app.add_handler(CommandHandler("summary", summary))
 
-    # Auto scan every 20 minutes
+    # Auto scan every 15 minutes (900 seconds)
     if app.job_queue:
-        app.job_queue.run_repeating(auto_scan, interval=1200, first=30)
+        app.job_queue.run_repeating(auto_scan, interval=900, first=30)
 
     return app
