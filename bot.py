@@ -34,8 +34,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Available commands:\n"
         "/status - Check bot status\n"
         "/scan - Analyze Nifty & Bank Nifty now\n"
-        "/summary - Paper trading summary\n"
-        "/take 1 or /take 2 - Record your trade"
+        "/summary - Performance summary\n"
+        "/take 1 or /take 2 - Record your trade\n"
+        "/close win or /close loss - Close the trade"
     )
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,7 +65,6 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(summary_text)
 
 async def take(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """User replies /take 1 or /take 2 to record the trade"""
     try:
         lots = int(context.args[0]) if context.args else 1
         if lots not in [1, 2]:
@@ -76,7 +76,25 @@ async def take(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(result)
 
     except Exception as e:
-        await update.message.reply_text(f"Error: {str(e)}\nUse /take 1 or /take 2")
+        await update.message.reply_text("Use /take 1 or /take 2")
+
+async def close(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        if not context.args:
+            await update.message.reply_text("Use /close win or /close loss")
+            return
+
+        result = context.args[0].lower()
+        if result not in ["win", "loss"]:
+            await update.message.reply_text("Use /close win or /close loss")
+            return
+
+        from paper_logger import close_trade
+        message = close_trade(result)
+        await update.message.reply_text(message)
+
+    except Exception as e:
+        await update.message.reply_text(f"Error: {str(e)}")
 
 def format_signal_message(signal: dict, option_suggestion: dict = None, position: dict = None, pnl: dict = None) -> str:
     if signal["decision"] == "DO NOT ENTER":
@@ -102,7 +120,9 @@ def format_signal_message(signal: dict, option_suggestion: dict = None, position
         msg += f"*Estimated Premium:* ₹{option_suggestion.get('estimated_premium', 'N/A')}\n\n"
 
     if position:
-        msg += f"*Suggested Lots (1% risk):* {position.get('quantity', 'N/A') // 15 if signal['instrument'] == 'BankNifty' else position.get('quantity', 'N/A') // 25}\n"
+        lot_size = 15 if signal['instrument'] == "BankNifty" else 25
+        suggested_lots = position.get('quantity', 0) // lot_size
+        msg += f"*Suggested Lots:* {suggested_lots}\n"
         msg += f"*Risk Amount:* ₹{position.get('actual_risk', 'N/A')}\n\n"
 
     msg += "*Reasons:*\n"
@@ -136,6 +156,7 @@ def create_bot_application():
     app.add_handler(CommandHandler("scan", scan))
     app.add_handler(CommandHandler("summary", summary))
     app.add_handler(CommandHandler("take", take))
+    app.add_handler(CommandHandler("close", close))
 
     if app.job_queue:
         app.job_queue.run_repeating(auto_scan, interval=900, first=30)
