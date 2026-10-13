@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-from data.data_fetcher import get_nifty_data, get_banknifty_data
+from data.data_fetcher import get_nifty_data, get_banknifty_data, get_multi_tf_data
 from signals.signal_generator import generate_signal
 from analysis.options_helper import suggest_option
 from analysis.kill_zone import apply_kill_zone_filter
@@ -19,16 +19,25 @@ BANKNIFTY_LOT_SIZE = 15
 
 
 async def analyze_instrument(instrument: str):
-    print(f"Analyzing {instrument}...")
+    print(f"Analyzing {instrument} (Multi-Timeframe)...")
 
-    if instrument.lower() == "nifty":
-        df = get_nifty_data(interval="15m", period="5d")
-        lot_size = NIFTY_LOT_SIZE
-    else:
-        df = get_banknifty_data(interval="15m", period="5d")
-        lot_size = BANKNIFTY_LOT_SIZE
+    # Fetch multi-timeframe data
+    mtf_data = get_multi_tf_data(instrument)
 
-    signal = generate_signal(df, instrument=instrument)
+    df_15m = mtf_data.get("15m")
+    df_1h = mtf_data.get("1h")
+
+    if df_15m is None or df_15m.empty:
+        return {
+            "instrument": instrument,
+            "decision": "DO NOT ENTER",
+            "reason": ["Failed to fetch 15m data"]
+        }, None, None, None
+
+    lot_size = NIFTY_LOT_SIZE if instrument.lower() == "nifty" else BANKNIFTY_LOT_SIZE
+
+    # Generate signal with multi-timeframe
+    signal = generate_signal(df_15m, instrument=instrument, df_1h=df_1h)
     signal = apply_kill_zone_filter(signal)
 
     option_suggestion = None
@@ -81,7 +90,7 @@ async def run_analysis(update=None):
 
 
 def main():
-    print("Starting SMC Signal Engine Bot...")
+    print("Starting SMC Signal Engine Bot (Multi-Timeframe)...")
     app = create_bot_application()
     app.run_polling()
 
