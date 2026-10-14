@@ -6,19 +6,22 @@ from analysis.dealing_range import calculate_dealing_range
 def generate_signal(df_15m, instrument="Nifty", df_1h=None):
     """
     Multi-timeframe signal generator
-    - 15m = Entry timeframe (strict rules)
+    - 15m = Entry timeframe
     - 1h  = Higher timeframe bias confirmation
     """
 
-    # ===== Higher Timeframe Bias (1H) =====
+    # Higher Timeframe Bias (1H)
     htf_bias = "neutral"
     if df_1h is not None and not df_1h.empty:
-        htf_info = get_current_bias(df_1h)
-        htf_bias = htf_info.get("bias", "neutral")
+        try:
+            htf_info = get_current_bias(df_1h)
+            htf_bias = htf_info.get("bias", "neutral")
+        except:
+            htf_bias = "neutral"
 
-    # ===== 15-minute Analysis =====
+    # 15-minute Analysis
     bias_info = get_current_bias(df_15m)
-    bias = bias_info["bias"]
+    bias = bias_info.get("bias", "neutral")
 
     liq = get_liquidity_analysis(df_15m)
     obs = get_latest_order_blocks(df_15m)
@@ -32,35 +35,32 @@ def generate_signal(df_15m, instrument="Nifty", df_1h=None):
     target1 = None
     target2 = None
 
-    current_price = float(df_15m['close'].iloc[-1])
+    current_price = float(df_15m['Close'].iloc[-1])
     last_candle = df_15m.iloc[-1]
 
     # Displacement check
-    body = abs(last_candle['close'] - last_candle['open'])
-    candle_range = last_candle['high'] - last_candle['low']
+    body = abs(last_candle['Close'] - last_candle['Open'])
+    candle_range = last_candle['High'] - last_candle['Low']
     body_ratio = body / candle_range if candle_range != 0 else 0
 
-    has_bullish_displacement = last_candle['close'] > last_candle['open'] and body_ratio > 0.55
-    has_bearish_displacement = last_candle['close'] < last_candle['open'] and body_ratio > 0.55
+    has_bullish_displacement = last_candle['Close'] > last_candle['Open'] and body_ratio > 0.55
+    has_bearish_displacement = last_candle['Close'] < last_candle['Open'] and body_ratio > 0.55
 
     # ==================== BULLISH SETUP ====================
     if bias == "bullish":
         direction = "Bullish"
         reasons_ok = []
 
-        # Higher timeframe must support or be neutral
         if htf_bias in ["bullish", "neutral"]:
             reasons_ok.append(f"1H Bias: {htf_bias}")
         else:
             reason.append(f"1H Bias is {htf_bias} (against trade)")
 
-        # Liquidity Sweep
         if liq.get("liquidity_sweep") == "bullish" or liq.get("swept_sell_side"):
             reasons_ok.append("Sell-side Liquidity Sweep")
         else:
             reason.append("No Sell-side Liquidity Sweep")
 
-        # Bullish Order Block nearby
         if obs.get("bullish_order_block") is not None:
             ob = obs["bullish_order_block"]
             ob_mid = (ob["top"] + ob["bottom"]) / 2
@@ -75,23 +75,19 @@ def generate_signal(df_15m, instrument="Nifty", df_1h=None):
         else:
             reason.append("No Bullish Order Block")
 
-        # Bullish FVG
         if obs.get("bullish_fvg") is not None:
             reasons_ok.append("Bullish FVG present")
         else:
             reason.append("No Bullish FVG")
 
-        # Discount zone
         if dr.get("current_zone") == "discount":
             reasons_ok.append("Price in Discount")
         else:
             reason.append("Not in Discount zone")
 
-        # Displacement (bonus)
         if has_bullish_displacement:
             reasons_ok.append("Bullish Displacement")
 
-        # Need at least 3 strong reasons + valid entry
         if len(reasons_ok) >= 3 and entry and stop_loss and entry > stop_loss:
             risk = entry - stop_loss
             target1 = round(entry + (risk * 2), 2)
@@ -164,10 +160,7 @@ def generate_signal(df_15m, instrument="Nifty", df_1h=None):
         "risk_reward_1": "1:2" if target1 else None,
         "risk_reward_2": "1:3" if target2 else None,
         "current_zone": dr.get("current_zone"),
-        "reason": reason,
-        "liquidity": liq,
-        "order_blocks": obs,
-        "dealing_range": dr
+        "reason": reason
     }
 
     return signal
