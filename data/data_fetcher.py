@@ -10,18 +10,20 @@ def get_data(symbol: str, interval: str = "15m", period: str = "5d"):
             return None
             
         df = df.reset_index()
-        df.columns = [col.lower() for col in df.columns]
         
-        # Standardize column names
-        if 'datetime' in df.columns:
-            df.rename(columns={'datetime': 'date'}, inplace=True)
-        if 'date' not in df.columns and 'index' in df.columns:
-            df.rename(columns={'index': 'date'}, inplace=True)
-            
-        required = ['open', 'high', 'low', 'close', 'volume']
+        # Keep original column names that analysis modules expect
+        # yfinance usually gives: Open, High, Low, Close, Volume
+        
+        # Make sure we have the required columns
+        required = ['Open', 'High', 'Low', 'Close']
         for col in required:
             if col not in df.columns:
-                return None
+                # Try lowercase version
+                lower_col = col.lower()
+                if lower_col in df.columns:
+                    df.rename(columns={lower_col: col}, inplace=True)
+                else:
+                    return None
                 
         return df
     except Exception as e:
