@@ -100,6 +100,7 @@ def format_signal_message(signal: dict, option_suggestion: dict = None, position
     if signal["decision"] == "DO NOT ENTER":
         msg = f"🔴 *DO NOT ENTER* – {signal['instrument']}\n\n"
         msg += f"*Bias:* {signal.get('bias')}\n"
+        msg += f"*1H Bias:* {signal.get('htf_bias')}\n\n"
         msg += "*Reasons:*\n"
         for r in signal.get("reason", []):
             msg += f"• {r}\n"
@@ -107,23 +108,26 @@ def format_signal_message(signal: dict, option_suggestion: dict = None, position
 
     msg = f"🟢 *ENTER SIGNAL* – {signal['instrument']}\n\n"
     msg += f"*Direction:* {signal.get('direction')}\n"
-    msg += f"*Bias:* {signal.get('bias')}\n\n"
+    msg += f"*Bias:* {signal.get('bias')} | 1H: {signal.get('htf_bias')}\n\n"
 
-    msg += f"*Index Entry:* `{signal.get('entry')}`\n"
-    msg += f"*Index SL:* `{signal.get('stop_loss')}`\n"
-    msg += f"*Index Target 1:* `{signal.get('target_1')}`\n"
-    msg += f"*Index Target 2:* `{signal.get('target_2')}`\n\n"
+    # Index levels
+    msg += "*Index Levels:*\n"
+    msg += f"Entry: `{signal.get('entry')}`\n"
+    msg += f"SL: `{signal.get('stop_loss')}`\n"
+    msg += f"T1: `{signal.get('target_1')}`\n"
+    msg += f"T2: `{signal.get('target_2')}`\n\n"
 
-    if option_suggestion and "recommended" in option_suggestion:
-        msg += f"*Recommended Option:* `{option_suggestion['recommended']}`\n"
-        msg += f"*Strike Type:* ATM\n"
-        msg += f"*Estimated Premium:* ₹{option_suggestion.get('estimated_premium', 'N/A')}\n\n"
+    # Option details
+    if option_suggestion:
+        msg += f"*Option:* `{option_suggestion.get('recommended')}`\n"
+        msg += f"*Estimated Premium:* ₹{option_suggestion.get('estimated_premium')}\n"
+        msg += f"*Cost for 1 Lot:* ₹{option_suggestion.get('cost_1_lot')}\n\n"
 
-    if position:
-        lot_size = 15 if signal['instrument'] == "BankNifty" else 25
-        suggested_lots = position.get('quantity', 0) // lot_size
-        msg += f"*Suggested Lots:* {suggested_lots}\n"
-        msg += f"*Risk Amount:* ₹{position.get('actual_risk', 'N/A')}\n\n"
+        msg += "*Option Levels (Approx):*\n"
+        msg += f"Entry: ₹{option_suggestion.get('option_entry')}\n"
+        msg += f"SL: ₹{option_suggestion.get('option_sl')}\n"
+        msg += f"T1: ₹{option_suggestion.get('option_t1')}\n"
+        msg += f"T2: ₹{option_suggestion.get('option_t2')}\n\n"
 
     msg += "*Reasons:*\n"
     for r in signal.get("reason", []):
