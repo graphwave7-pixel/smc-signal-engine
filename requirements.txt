@@ -5,3 +5,6 @@ python-telegram-bot[job-queue]==20.7
 python-dotenv
 pytz
 requests
+smartapi-python
+pyotp
+logzero
