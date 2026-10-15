@@ -9,3 +9,5 @@ smartapi-python
 pyotp
 logzero
 websocket-client
+beautifulsoup4
+lxml
