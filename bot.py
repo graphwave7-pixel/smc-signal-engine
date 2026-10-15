@@ -33,7 +33,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "SMC Signal Engine is active.\n\n"
         "Available commands:\n"
         "/status - Check bot status\n"
-        "/scan - Analyze Nifty & Bank Nifty now\n"
+        "/scan - Analyze Nifty & Bank Nifty (Intraday)\n"
+        "/stocks - Scan Nifty 50 stocks for Swing\n"
         "/summary - Performance summary\n"
         "/take 1 or /take 2 - Record your trade\n"
         "/close win or /close loss - Close the trade"
@@ -44,7 +45,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"Bot is running ✅\n"
         f"Market Status: {market_status}\n"
-        f"Auto-scan: Every 15 minutes (only during market hours)"
+        f"Auto-scan Indices: Every 15 minutes\n"
+        f"Auto-scan Stocks: Every 1 hour"
     )
 
 async def scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -55,9 +57,14 @@ async def scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    await update.message.reply_text("Analyzing market... Please wait.")
+    await update.message.reply_text("Analyzing Nifty & Bank Nifty... Please wait.")
     from main import run_analysis
     await run_analysis(update)
+
+async def stocks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Scanning Nifty 50 stocks for Swing signals... This may take 1-2 minutes.")
+    from main import run_stock_scan
+    await run_stock_scan(update)
 
 async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from paper_logger import get_summary
@@ -110,14 +117,12 @@ def format_signal_message(signal: dict, option_suggestion: dict = None, position
     msg += f"*Direction:* {signal.get('direction')}\n"
     msg += f"*Bias:* {signal.get('bias')} | 1H: {signal.get('htf_bias')}\n\n"
 
-    # Index levels
     msg += "*Index Levels:*\n"
     msg += f"Entry: `{signal.get('entry')}`\n"
     msg += f"SL: `{signal.get('stop_loss')}`\n"
     msg += f"T1: `{signal.get('target_1')}`\n"
     msg += f"T2: `{signal.get('target_2')}`\n\n"
 
-    # Option details
     if option_suggestion:
         msg += f"*Option:* `{option_suggestion.get('recommended')}`\n"
         msg += f"*Premium:* ₹{option_suggestion.get('estimated_premium')} ({option_suggestion.get('source', 'Estimated')})\n"
@@ -140,7 +145,6 @@ def format_signal_message(signal: dict, option_suggestion: dict = None, position
 async def auto_scan(context: ContextTypes.DEFAULT_TYPE):
     if not is_market_open():
         return
-
     from main import run_analysis
 
     class FakeUpdate:
@@ -152,17 +156,28 @@ async def auto_scan(context: ContextTypes.DEFAULT_TYPE):
     fake_update = FakeUpdate()
     await run_analysis(fake_update)
 
+async def auto_stock_scan(context: ContextTypes.DEFAULT_TYPE):
+    if not is_market_open():
+        return
+    from main import run_stock_scan
+    await run_stock_scan()
+
 def create_bot_application():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("status", status))
     app.add_handler(CommandHandler("scan", scan))
+    app.add_handler(CommandHandler("stocks", stocks))
     app.add_handler(CommandHandler("summary", summary))
     app.add_handler(CommandHandler("take", take))
     app.add_handler(CommandHandler("close", close))
 
     if app.job_queue:
+        # Indices every 15 minutes
         app.job_queue.run_repeating(auto_scan, interval=900, first=30)
+        
+        # Stocks every 1 hour
+        app.job_queue.run_repeating(auto_stock_scan, interval=3600, first=60)
 
     return app
