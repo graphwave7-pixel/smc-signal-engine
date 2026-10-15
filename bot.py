@@ -120,7 +120,7 @@ def format_signal_message(signal: dict, option_suggestion: dict = None, position
     # Option details
     if option_suggestion:
         msg += f"*Option:* `{option_suggestion.get('recommended')}`\n"
-        msg += f"*Estimated Premium:* ₹{option_suggestion.get('estimated_premium')}\n"
+        msg += f"*Premium:* ₹{option_suggestion.get('estimated_premium')} ({option_suggestion.get('source', 'Estimated')})\n"
         msg += f"*Cost for 1 Lot:* ₹{option_suggestion.get('cost_1_lot')}\n\n"
 
         msg += "*Option Levels (Approx):*\n"
